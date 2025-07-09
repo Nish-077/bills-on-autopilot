@@ -61,4 +61,4 @@ class BillDatabase:
             "person": person
         }
         res = supabase.table(self.table).update(data).eq("id", expenditure_id).execute()
-        return res.count > 0
+        return bool(res.data)

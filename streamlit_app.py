@@ -162,17 +162,15 @@ def process_all_images(uploaded_files):
             'items': all_items,
             'date': datetime.now().date()  # Use proper date object
         }
-        
         # Store combined data in session state
         st.session_state.current_bill_data = combined_bill_data
         person = st.session_state.get('selected_person', 'Aadishesh')
         st.session_state.current_person = person
-        
-        st.success(f"🎉 Successfully processed {processed_count} out of {len(uploaded_files)} bills!")
-        st.info(f"Found a total of {len(all_items)} items across all bills.")
+        st.session_state.last_action_message = f"🎉 Successfully processed {processed_count} out of {len(uploaded_files)} bills! Found a total of {len(all_items)} items."
         st.rerun()
     else:
-        st.error("No items were found in any of the uploaded bills. Please try with clearer images.")
+        st.session_state.last_action_message = "❌ No items were found in any of the uploaded bills. Please try with clearer images."
+        st.rerun()
 
 def process_bill_image(uploaded_file, image_index=0):
     """Process the uploaded bill image"""
@@ -254,14 +252,8 @@ def display_extracted_data():
                         category=row['category'],
                         person=current_person
                     )
-                
-                st.success("✅ All items saved to database!")
-                st.balloons()
-                
-                # Set flag that data was just saved
+                st.session_state.last_action_message = "✅ All items saved to database!"
                 st.session_state.data_just_saved = True
-                
-                # Clear the extracted data and cache
                 if 'current_bill_data' in st.session_state:
                     del st.session_state['current_bill_data']
                 if 'current_person' in st.session_state:
@@ -270,31 +262,22 @@ def display_extracted_data():
                     del st.session_state['processed_image_index']
                 if 'expenditures_cache' in st.session_state:
                     del st.session_state['expenditures_cache']
-                
-                # Clear the uploaded images from UI
                 st.session_state.uploader_key += 1
-                
-                # Show success message with navigation hint
-                st.info("💡 Data saved! Switch to 'View Expenses' or 'Analytics' to see your updated data.")
-                
-                # Force rerun to clear the display
                 st.rerun()
-                
             except Exception as e:
-                st.error(f"Error saving to database: {e}")
+                st.session_state.last_action_message = f"❌ Error saving to database: {e}"
+                st.rerun()
     
     with col2:
         if st.button("🗑️ Clear Data"):
-            # Clear the extracted data
             if 'current_bill_data' in st.session_state:
                 del st.session_state['current_bill_data']
             if 'current_person' in st.session_state:
                 del st.session_state['current_person']
             if 'processed_image_index' in st.session_state:
                 del st.session_state['processed_image_index']
-            # Also clear the uploaded images
             st.session_state.uploader_key += 1
-            
+            st.session_state.last_action_message = "🗑️ Data cleared."
             st.rerun()
 
 def view_expenses_page():
@@ -409,7 +392,6 @@ def view_expenses_page():
         st.markdown("---")
         if st.button("💾 Save Changes", type="primary"):
             try:
-                # Update each row that has been modified
                 for idx, row in edited_data.iterrows():
                     st.session_state.db.update_expenditure(
                         expenditure_id=row['id'],
@@ -420,14 +402,13 @@ def view_expenses_page():
                         category=row['category'],
                         person=row['person']
                     )
-                
-                st.success("✅ Changes saved successfully!")
-                # Clear cache to refresh data and update analytics
+                st.session_state.last_action_message = "✅ Changes saved successfully!"
                 if 'expenditures_cache' in st.session_state:
                     del st.session_state['expenditures_cache']
                 st.rerun()
             except Exception as e:
-                st.error(f"Error saving changes: {e}")
+                st.session_state.last_action_message = f"❌ Error saving changes: {e}"
+                st.rerun()
         
         # Add New Entry, Search, and Delete sections below the table
         st.markdown("---")
@@ -455,14 +436,16 @@ def view_expenses_page():
                             category=new_category,
                             person=new_person
                         )
-                        st.success("✅ Entry added successfully!")
+                        st.session_state.last_action_message = "✅ Entry added successfully!"
                         if 'expenditures_cache' in st.session_state:
                             del st.session_state['expenditures_cache']
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error adding entry: {e}")
+                        st.session_state.last_action_message = f"❌ Error adding entry: {e}"
+                        st.rerun()
                 else:
-                    st.error("Please fill in all required fields")
+                    st.session_state.last_action_message = "❌ Please fill in all required fields"
+                    st.rerun()
         # Search
         st.subheader("🔍 Search Expenses")
         search_term = st.text_input("Search items (by name)", placeholder="Enter item name to search...")
@@ -490,12 +473,23 @@ def view_expenses_page():
                     try:
                         for item_id in selected_ids:
                             st.session_state.db.delete_expenditure(int(item_id))
-                        st.success(f"✅ Deleted {len(selected_ids)} items successfully!")
+                        st.session_state.last_action_message = f"✅ Deleted {len(selected_ids)} items successfully!"
                         if 'expenditures_cache' in st.session_state:
                             del st.session_state['expenditures_cache']
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Error deleting items: {e}")
+                        st.session_state.last_action_message = f"❌ Error deleting items: {e}"
+                        st.rerun()
+    # Show last action message if present
+    if 'last_action_message' in st.session_state and st.session_state.last_action_message:
+        msg = st.session_state.last_action_message
+        if msg.startswith('✅'):
+            st.success(msg)
+        elif msg.startswith('❌'):
+            st.error(msg)
+        elif msg.startswith('🎉') or msg.startswith('🗑️'):
+            st.info(msg)
+        st.session_state.last_action_message = ""
         with col2:
             st.write("")
     else:
