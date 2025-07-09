@@ -479,7 +479,7 @@ def view_expenses_page():
         selected_ids = st.multiselect(
             "Select items to delete:",
             options=edited_data['id'].tolist(),
-            format_func=lambda x: f"{edited_data[edited_data['id'] == x]['item'].iloc[0]} - ₹{edited_data[edited_data['id'] == x]['amount'].iloc[0]:.2f} ({edited_data[edited_data['id'] == x]['date'].iloc[0]})",
+            format_func=lambda x: f"#{x} | {edited_data[edited_data['id'] == x]['item'].iloc[0]} - ₹{edited_data[edited_data['id'] == x]['amount'].iloc[0]:.2f} ({edited_data[edited_data['id'] == x]['date'].iloc[0]})",
             key="delete_multiselect",
             help="Select one or more items to delete"
         )
@@ -489,7 +489,7 @@ def view_expenses_page():
                 if selected_ids:
                     try:
                         for item_id in selected_ids:
-                            st.session_state.db.delete_expenditure(item_id)
+                            st.session_state.db.delete_expenditure(int(item_id))
                         st.success(f"✅ Deleted {len(selected_ids)} items successfully!")
                         if 'expenditures_cache' in st.session_state:
                             del st.session_state['expenditures_cache']
